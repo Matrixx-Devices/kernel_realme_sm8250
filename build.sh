@@ -1,5 +1,4 @@
 #! /bin/bash
-
 # Kernel compile script for Realme X50 Pro by AAMIR ALI
 
 # Setup environment
@@ -15,7 +14,7 @@ CLANG_PATH=$KERNEL_PATH/.clang/clang-r510928
 Anykernel=$KERNEL_PATH/AnyKernel3
 export PATH=$CLANG_PATH/bin:$PATH
 FULL_LTO=auto
-KernelSU=false
+KernelSU=""
 BUILD_CC="LLVM=1 LLVM_IAS=1 LD=ld.lld AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump READELF=llvm-readelf OBJSIZE=llvm-objsize STRIP=llvm-strip"
 
 clone_tools() {
@@ -124,7 +123,6 @@ make_anykernel3_zip() {
     echo -e "${clear}"
     echo -e "${green}Completed in $(($(date +%s) - start)) seconds.${clear}"
     cd $KERNEL_PATH
-    exit
 }
 
 distro_check(){
@@ -144,6 +142,15 @@ fi
 }
 
 start=$(date +%s)
+echo -e "${green}KernelSU disable by default!${clear}"
+
+read -p "For Enable Press 1: " KernelSU
+if [ "$KernelSU" == "1" ]; then
+    KernelSU=true
+else
+    KernelSU=false
+fi 
+
 if [ -d $Anykernel ]; then
     echo -e "${blue}Anykernel exists, Skipping !${clear}"
 else
