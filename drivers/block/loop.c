@@ -245,12 +245,16 @@ static void loop_set_size(struct loop_device *lo, loff_t size)
 	kobject_uevent(&disk_to_dev(bdev->bd_disk)->kobj, KOBJ_CHANGE);
 }
 
-static void
+static int
 figure_loop_size(struct loop_device *lo, loff_t offset, loff_t sizelimit)
 {
 	loff_t size = get_size(offset, sizelimit, lo->lo_backing_file);
+	sector_t x = (sector_t)size;
 
+	if (unlikely((loff_t)x != size))
+		return -EFBIG;
 	loop_set_size(lo, size);
+	return 0;
 }
 
 static inline int
@@ -942,8 +946,6 @@ static int loop_prepare_queue(struct loop_device *lo)
 	return 0;
 }
 
-<<<<<<< HEAD
-=======
 static void loop_update_rotational(struct loop_device *lo)
 {
 	struct file *file = lo->lo_backing_file;
@@ -1000,7 +1002,10 @@ static int loop_set_fd(struct loop_device *lo, fmode_t mode,
 	    !file->f_op->write_iter)
 		lo_flags |= LO_FLAGS_READ_ONLY;
 
+	error = -EFBIG;
 	size = get_loop_size(lo, file);
+	if ((loff_t)(sector_t)size != size)
+		goto out_unlock;
 
 	error = loop_prepare_queue(lo);
 	if (error)
@@ -1055,7 +1060,6 @@ out:
 	return error;
 }
 
->>>>>>> v4.19.312
 static int
 loop_release_xfer(struct loop_device *lo)
 {
@@ -1432,43 +1436,12 @@ loop_set_status_from_info(struct loop_device *lo,
 			  const struct loop_info64 *info)
 {
 	int err;
-<<<<<<< HEAD
-	struct block_device *bdev;
-	kuid_t uid = current_uid();
-	int prev_lo_flags;
-	bool partscan = false;
-	bool size_changed = false;
-
-	err = mutex_lock_killable(&loop_ctl_mutex);
-	if (err)
-		return err;
-	if (lo->lo_encrypt_key_size &&
-	    !uid_eq(lo->lo_key_owner, uid) &&
-	    !capable(CAP_SYS_ADMIN)) {
-		err = -EPERM;
-		goto out_unlock;
-	}
-	if (lo->lo_state != Lo_bound) {
-		err = -ENXIO;
-		goto out_unlock;
-	}
-
-	if (lo->lo_offset != info->lo_offset ||
-	    lo->lo_sizelimit != info->lo_sizelimit) {
-		size_changed = true;
-		sync_blockdev(lo->lo_device);
-		invalidate_bdev(lo->lo_device);
-	}
-
-	/* I/O need to be drained during transfer transition */
-	blk_mq_freeze_queue(lo->lo_queue);
-=======
 	struct loop_func_table *xfer;
 	kuid_t uid = current_uid();
+	loff_t new_size;
 
 	if ((unsigned int) info->lo_encrypt_key_size > LO_KEY_SIZE)
 		return -EINVAL;
->>>>>>> v4.19.312
 
 	if (size_changed && lo->lo_device->bd_inode->i_mapping->nrpages) {
 		/* If any pages were dirtied after kill_bdev(), try again */
@@ -1492,13 +1465,6 @@ loop_set_status_from_info(struct loop_device *lo,
 	/* For flags that can't be cleared, use previous values too */
 	lo->lo_flags |= prev_lo_flags & ~LOOP_SET_STATUS_CLEARABLE_FLAGS;
 
-<<<<<<< HEAD
-	if (size_changed) {
-		loff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,
-					   lo->lo_backing_file);
-		loop_set_size(lo, new_size);
-	}
-=======
 		if (type >= MAX_LO_CRYPT)
 			return -EINVAL;
 		xfer = xfer_funcs[type];
@@ -1514,13 +1480,15 @@ loop_set_status_from_info(struct loop_device *lo,
 	/* Avoid assigning overflow values */
 	if (info->lo_offset > LLONG_MAX || info->lo_sizelimit > LLONG_MAX)
 		return -EOVERFLOW;
->>>>>>> v4.19.312
+
+	new_size = get_size(info->lo_offset, info->lo_sizelimit,
+			    lo->lo_backing_file);
+	if ((loff_t)(sector_t)new_size != new_size)
+		return -EFBIG;
 
 	lo->lo_offset = info->lo_offset;
 	lo->lo_sizelimit = info->lo_sizelimit;
 
-<<<<<<< HEAD
-=======
 	memcpy(lo->lo_file_name, info->lo_file_name, LO_NAME_SIZE);
 	memcpy(lo->lo_crypt_name, info->lo_crypt_name, LO_NAME_SIZE);
 	lo->lo_file_name[LO_NAME_SIZE-1] = 0;
@@ -1778,14 +1746,7 @@ static int loop_set_capacity(struct loop_device *lo)
 	if (unlikely(lo->lo_state != Lo_bound))
 		return -ENXIO;
 
-<<<<<<< HEAD
-	size = get_loop_size(lo, lo->lo_backing_file);
-	loop_set_size(lo, size);
-=======
-	figure_loop_size(lo, lo->lo_offset, lo->lo_sizelimit);
->>>>>>> v4.19.312
-
-	return 0;
+	return figure_loop_size(lo, lo->lo_offset, lo->lo_sizelimit);
 }
 
 static int loop_set_dio(struct loop_device *lo, unsigned long arg)
