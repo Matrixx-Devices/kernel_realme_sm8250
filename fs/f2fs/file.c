@@ -2275,9 +2275,6 @@ static int f2fs_ioc_release_volatile_write(struct file *filp)
 
 	inode_lock(inode);
 
-<<<<<<< HEAD
-	f2fs_abort_atomic_write(inode, true);
-=======
 	if (!f2fs_is_volatile_file(inode))
 		goto out;
 
@@ -2319,7 +2316,6 @@ static int f2fs_ioc_abort_volatile_write(struct file *filp)
 	}
 
 	clear_inode_flag(inode, FI_ATOMIC_REVOKE_REQUEST);
->>>>>>> v4.19.323
 
 	inode_unlock(inode);
 
@@ -2373,9 +2369,16 @@ static int f2fs_ioc_shutdown(struct file *filp, unsigned long arg)
 	case F2FS_GOING_DOWN_METASYNC:
 		/* do checkpoint only */
 		ret = f2fs_sync_fs(sb, 1);
-		if (ret)
+		if (ret) {
+			if (ret == -EIO)
+				ret = 0;
 			goto out;
+<<<<<<< HEAD
 		f2fs_stop_checkpoint(sbi, false, STOP_CP_REASON_SHUTDOWN);
+=======
+		}
+		f2fs_stop_checkpoint(sbi, false);
+>>>>>>> ASB-2024-11-05_4.19-stable
 		set_sbi_flag(sbi, SBI_IS_SHUTDOWN);
 		break;
 	case F2FS_GOING_DOWN_NOSYNC:
@@ -2393,6 +2396,8 @@ static int f2fs_ioc_shutdown(struct file *filp, unsigned long arg)
 		set_sbi_flag(sbi, SBI_IS_DIRTY);
 		/* do checkpoint only */
 		ret = f2fs_sync_fs(sb, 1);
+		if (ret == -EIO)
+			ret = 0;
 		goto out;
 	default:
 		ret = -EINVAL;
